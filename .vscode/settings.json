@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "segmem.h": "c",
+        "string.h": "c"
+    }
+}

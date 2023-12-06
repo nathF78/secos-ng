@@ -13,9 +13,7 @@ endef
 
 define assemble
 echo "    AS    $<"
-$(CPP) $< $(CFLAGS) -o $<.s
-$(CC) $(CFLAGS) -o $@ -c $<.s 
-$(RM) $<.s
+$(CC) $(CFLAGS) -o $@ -c $<
 endef
 
 define link

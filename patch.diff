@@ -1,0 +1,15 @@
+diff --git a/utils/rules.mk b/utils/rules.mk
+index c6078c6..e68be33 100644
+--- a/utils/rules.mk
++++ b/utils/rules.mk
+@@ -13,9 +13,7 @@ endef
+ 
+ define assemble
+ echo "    AS    $<"
+-$(CPP) $< $(CFLAGS) -o $<.s
+-$(CC) $(CFLAGS) -o $@ -c $<.s 
+-$(RM) $<.s
++$(CC) $(CFLAGS) -o $@ -c $<
+ endef
+ 
+ define link
