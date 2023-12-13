@@ -64,7 +64,7 @@ void initGDT() {
     debug("GDT addr:  0x%x ", (unsigned int) gdtr_ptr.addr);
     debug("limit: %d\n", gdtr_ptr.limit);
     print_gdt_content(gdtr_ptr);
-    seg_desc_t *my_gdt = (seg_desc_t*) 0x306000;
+    seg_desc_t *my_gdt = (seg_desc_t*) 0x310000;
 
     my_gdt[0].raw = 0ULL;
 
@@ -133,7 +133,7 @@ void initGDT() {
     my_gdtr.limit = sizeof(my_gdt[1])*6;
     set_gdtr(my_gdtr);
 
-    debug("\nGDTR and GDT");
+    debug("\nGDTR and GDT\n");
     get_gdtr(my_gdtr);
     debug("GDT addr:  0x%x ", (unsigned int) my_gdtr.addr);
     debug("limit: %d\n", my_gdtr.limit);

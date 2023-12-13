@@ -3,6 +3,8 @@
 #include <info.h>
 #include <string.h>
 #include <segmem.h>
+#include <pagemem.h>
+#include <cr.h>
 #include "segmentation.c"
 
 extern info_t   *info;
@@ -37,6 +39,22 @@ void user2() {
    while(1);
 }
 
+void interrupt_handler(){
+   printf("L'interruption de l'horloge \n"); 
+	asm volatile ("pusha"); 
+	printf("BP interruption ! \n");
+	uint32_t val;
+   	asm volatile ("mov 4(%%ebp), %0":"=r"(val)); 
+	printf("val  blabla : %x \n", val);
+	asm volatile ("popa"); 
+	asm volatile ("leave; iret"); 
+}
+
+void interrupt_trigger() {
+	__asm__("int $32"); 
+	printf("Retour apres avoir gerer interupt\n"); 
+}
+
 void tp() {
    printf("\n");
 
@@ -57,6 +75,26 @@ void tp() {
 
    // Init GDT
    initGDT();
+
+   //Gestion des interruptions 
+   idt_reg_t idtr; 
+	get_idtr(idtr);
+	printf("addr : %lx \n", idtr.addr);
+
+   idtr.desc[32].offset_1 = (int) &interrupt_handler;
+   interrupt_trigger(); 
+   printf("end of function \n"); 
+
+   //Pagination -> Je pense faudrait une fonction pour définir la pagination de chaque tâche puis une fonction qui nous permette de switch -> truc du swtich faudra regarder pour les tables TLB 
+   pde32_t *pgd = (pde32_t*)0x302000; //Définition d'une première pgd à voir où on place les suivantes 
+   pte32_t *ptb = (pte32_t*)0x601000; //Définition de la ptb associé -> à voir où on les stockes car si limite 0x400000 ça va être juste 
+   for(int i=0;i<1024;i++) {          // Avec ça on id map tout jusqu'à 0x400000
+	 	pg_set_entry(&ptb[i], PG_KRN|PG_RW, i); // Ici faut voir les drois qu'on met à chaque tâche et c'est là où ça se complique
+	}
+	memset((void*)pgd, 0, PAGE_SIZE);
+	pg_set_entry(&pgd[0], PG_KRN|PG_RW, page_nr(ptb)); // De même ici faut voir comment on met les droits
+   //Attention, bien id map tout ce qu'on fait avant la pagination !! 
+
 
 
  
