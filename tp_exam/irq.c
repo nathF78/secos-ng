@@ -49,7 +49,7 @@ void init_idt() {
     //Interruption de l'horloge
     debug("Configuring clock interrupt... \n");
     idtr.desc[32].offset_1 = (int) &interrupt_clock_handler;
-    debug("\tSuccess\n");
+    debug("\tSuccess");
 }
 
 void enable_hardware_interrupts() {
