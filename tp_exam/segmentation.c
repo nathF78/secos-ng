@@ -138,6 +138,7 @@ void initGDT() {
     debug("GDT addr:  0x%x ", (unsigned int) my_gdtr.addr);
     debug("limit: %d\n", my_gdtr.limit);
     print_gdt_content(my_gdtr);
+    debug("\n");
     // end Q7
 
     // // Q9

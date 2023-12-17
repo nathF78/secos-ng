@@ -1,9 +1,9 @@
 /* GPLv2 (c) Airbus */
 #include <debug.h>
+#include <pagemem.h>
 #include <info.h>
 #include <string.h>
 #include <segmem.h>
-#include <pagemem.h>
 #include <cr.h>
 #include "irq.c"
 #include "segmentation.c"
@@ -59,16 +59,31 @@ void tp() {
       entry++;
    }
 
-   // Init GDT
+   // ********** Segmentation **********
    initGDT();
 
-   //Gestion des interruptions 
+   // ********** Gestion des interruptions **********
    init_idt();
    enable_hardware_interrupts();
 
+   // ********** Pagination **********
+   debug("\nPaging configuration... \n");
+   uint32_t cr3 = get_cr3();
+	debug("\tCurrent CR3 = 0x%x\n", (unsigned int) cr3);
 
+   // PGD du noyau
+   debug("\tKernel PGD initialization... \n");
    //Pagination -> Je pense faudrait une fonction pour définir la pagination de chaque tâche puis une fonction qui nous permette de switch -> truc du swtich faudra regarder pour les tables TLB 
-   pde32_t *pgd = (pde32_t*)0x302000; //Définition d'une première pgd à voir où on place les suivantes 
+   pde32_t *pgd = (pde32_t*)0x600000; //Définition d'une première pgd à voir où on place les suivantes 
+
+   // On définit la pgd courante
+   set_cr3((uint32_t)pgd); 
+   cr3 = get_cr3();
+	debug("\t\tNew CR3 = 0x%x\n", (unsigned int) cr3);
+
+   // On définit la ptb associé à la pgd courante
+   debug("\tKernel PTB1 initialization... \n");
+   // plus logique à 1000 entrées de 4 octets -> 4Ko ?
    pte32_t *ptb = (pte32_t*)0x601000; //Définition de la ptb associé -> à voir où on les stockes car si limite 0x400000 ça va être juste 
    for(int i=0;i<1024;i++) {          // Avec ça on id map tout jusqu'à 0x400000
 	 	pg_set_entry(&ptb[i], PG_KRN|PG_RW, i); // Ici faut voir les drois qu'on met à chaque tâche et c'est là où ça se complique
@@ -76,6 +91,24 @@ void tp() {
 	memset((void*)pgd, 0, PAGE_SIZE);
 	pg_set_entry(&pgd[0], PG_KRN|PG_RW, page_nr(ptb)); // De même ici faut voir comment on met les droits
    //Attention, bien id map tout ce qu'on fait avant la pagination !! 
+
+   // On définit la ptb2 associé à la pgd courante //comprend pas trop ce qu'on fait ici ni pourquoi ???
+   debug("\tKernel PTB2 initialization... \n");
+   pte32_t *ptb2 = (pte32_t*)0x602000;
+	for(int i=0;i<1024;i++) {
+		pg_set_entry(&ptb2[i], PG_KRN|PG_RW, i+1024);
+	}
+	pg_set_entry(&pgd[1], PG_KRN|PG_RW, page_nr(ptb2));
+
+   //activation de la pagination
+   debug("\tEnabling paging (set CR0)... \n");
+   uint32_t cr0 = get_cr0();
+	set_cr0(cr0|CR0_PG);
+   debug("\t\tSuccess !\n");
+
+   debug("PTB[1] = %d\n", ptb[1].raw);
+
+   //debug("PTB[1] = %d\n", ptb[1].raw);
 
    int i = 0;
    while (1) {

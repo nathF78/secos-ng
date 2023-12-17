@@ -40,20 +40,20 @@ void interrupt_test_trigger() {
 }
 
 void init_idt() {
-    debug("\nInterrupt configuration... \n");
+    debug("Interrupt configuration... \n");
     idt_reg_t idtr; 
     get_idtr(idtr);
-    printf("idtr addr : %lx \n", idtr.addr);
-    debug("\tSuccess\n");
+    debug("\tidtr addr : %lx \n", idtr.addr);
+    debug("\t\tSuccess !\n");
 
     //Interruption de l'horloge
-    debug("Configuring clock interrupt... \n");
+    debug("\tConfiguring clock interrupt... \n");
     idtr.desc[32].offset_1 = (int) &interrupt_clock_handler;
-    debug("\tSuccess");
+    debug("\t\tSuccess !\n");
 }
 
 void enable_hardware_interrupts() {
-    debug("\nEnabling hardware interrupts... \n");
+    debug("\tEnabling hardware interrupts... \n");
     asm volatile ("sti");
-    debug("\tSuccess\n");
+    debug("\t\tSuccess !\n");
 }

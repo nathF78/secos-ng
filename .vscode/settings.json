@@ -1,6 +1,9 @@
 {
     "files.associations": {
         "segmem.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "info.h": "c",
+        "types.h": "c",
+        "debug.h": "c"
     }
 }
