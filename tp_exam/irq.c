@@ -1,4 +1,3 @@
-/* GPLv2 (c) Airbus */
 #include <debug.h>
 #include <info.h>
 #include <string.h>
@@ -41,19 +40,20 @@ void interrupt_test_trigger() {
 
 void init_idt() {
     debug("Interrupt configuration... \n");
+    debug("\tGetting idtr adress... ");
     idt_reg_t idtr; 
     get_idtr(idtr);
-    debug("\tidtr addr : %lx \n", idtr.addr);
-    debug("\t\tSuccess !\n");
+    debug(" Success !\n");
+    debug("\t\tidtr addr : %lx \n", idtr.addr);
 
     //Interruption de l'horloge
-    debug("\tConfiguring clock interrupt... \n");
+    debug("\tConfiguring clock interrupt... ");
     idtr.desc[32].offset_1 = (int) &interrupt_clock_handler;
-    debug("\t\tSuccess !\n");
+    debug(" Success !\n");
 }
 
 void enable_hardware_interrupts() {
-    debug("\tEnabling hardware interrupts... \n");
+    debug("\tEnabling hardware interrupts... ");
     asm volatile ("sti");
-    debug("\t\tSuccess !\n");
+    debug(" Success !\n");
 }
