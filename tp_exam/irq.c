@@ -9,18 +9,25 @@ extern uint32_t __kernel_start__;
 extern uint32_t __kernel_end__;
 
 int clock = 0;
+uint64_t old_GP_handler;
 
 void interrupt_clock_handler(){
     asm volatile ("pusha"); 
     debug("Clock interrupt : %d \n", clock); 
     clock++;
-
     //tell the hardware that we have handled the interrupt
     outb(0x20,0x20);
     
     asm volatile ("popa");
     asm volatile ("leave; iret"); 
    
+}
+
+void interrupt_test_GP_handler(){
+    asm volatile ("pusha"); 
+    printf("GP interruption ! \n");
+    asm volatile ("popa"); 
+    asm volatile ("leave; iret"); 
 }
 
 void interrupt_test_handler(){
@@ -39,7 +46,7 @@ void interrupt_test_trigger() {
 }
 
 void init_idt() {
-    debug("Interrupt configuration... \n");
+    debug("\nInterrupt configuration... \n");
     debug("\tGetting idtr adress... ");
     idt_reg_t idtr; 
     get_idtr(idtr);
@@ -49,6 +56,23 @@ void init_idt() {
     //Interruption de l'horloge
     debug("\tConfiguring clock interrupt... ");
     idtr.desc[32].offset_1 = (int) &interrupt_clock_handler;
+    debug(" Success !\n");
+}
+
+void enable_GP_intercept() {
+    debug("\tEnabling GP intercept... ");
+    idt_reg_t idtr; 
+    get_idtr(idtr);
+    old_GP_handler = idtr.desc[13].offset_1;
+    idtr.desc[13].offset_1 = (int) &interrupt_test_GP_handler;
+    debug(" Success !\n");
+}
+
+void disable_GP_intercept() {
+    debug("\tDisabling GP intercept... ");
+    idt_reg_t idtr; 
+    get_idtr(idtr);
+    idtr.desc[13].offset_1 = old_GP_handler;
     debug(" Success !\n");
 }
 

@@ -13,6 +13,7 @@ extern info_t   *info;
 extern uint32_t __kernel_start__;
 extern uint32_t __kernel_end__;
 
+
 char* inttypetochar(int t) {
    switch(t) {
 
@@ -41,6 +42,19 @@ void user2() {
    while(1);
 }
 
+void userland2() {
+   int i = 0;
+   while (1) {
+      if (i++ % 10000000 == 0) {
+         debug("userland2 says hello!\n");
+         asm volatile ("mov %eax, %cr0");
+      }
+      else {
+         asm volatile ("nop");
+      }
+   }
+}
+
 void tp() {
    printf("\n");
 
@@ -60,7 +74,7 @@ void tp() {
    }
 
    // ********** Segmentation **********
-   initGDT();
+   init_gdt();
 
    // ********** Gestion des interruptions **********
    init_idt();
@@ -103,15 +117,21 @@ void tp() {
 	pg_set_entry(&pgd[1], PG_KRN|PG_RW, page_nr(ptb2));
    debug(" Success !\n");
 
-   //activation de la pagination
-   debug("\tEnabling paging (set CR0)... ");
-   uint32_t cr0 = get_cr0();
-	set_cr0(cr0|CR0_PG);
-   debug(" Success !\n");
+   //activation de la pagination -> fait planter les GP exception -> à voir pourquoi
+   // debug("\tEnabling paging (set CR0)... ");
+   // uint32_t cr0 = get_cr0();
+	// set_cr0(cr0|CR0_PG);
+   // debug(" Success !\n");
 
-   debug("PTB[1] = %d\n", ptb[1].raw);
+   // debug("PTB[1] = %d\n", ptb[1].raw);
 
+   //enable_GP_intercept();
+   
+
+   //pb passage en mode user -> voir si on peut pas faire un truc du genre
    //debug("PTB[1] = %d\n", ptb[1].raw);
+
+   go_to_ring3(&test_ring0);
 
    int i = 0;
    while (1) {

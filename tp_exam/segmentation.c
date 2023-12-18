@@ -8,6 +8,33 @@ extern info_t   *info;
 extern uint32_t __kernel_start__;
 extern uint32_t __kernel_end__;
 
+#define c0_idx  1
+#define d0_idx  2
+#define c3_idx  3
+#define d3_idx  4
+#define ts_idx  5
+
+#define c0_sel  gdt_krn_seg_sel(c0_idx)
+#define d0_sel  gdt_krn_seg_sel(d0_idx)
+#define c3_sel  gdt_usr_seg_sel(c3_idx)
+#define d3_sel  gdt_usr_seg_sel(d3_idx)
+#define ts_sel  gdt_krn_seg_sel(ts_idx)
+
+seg_desc_t *GDT = (seg_desc_t*) 0x310000;
+tss_t      TSS;
+
+#define gdt_flat_dsc(_dSc_,_pVl_,_tYp_)                                 \
+   ({                                                                   \
+      (_dSc_)->raw     = 0;                                             \
+      (_dSc_)->limit_1 = 0xffff;                                        \
+      (_dSc_)->limit_2 = 0xf;                                           \
+      (_dSc_)->type    = _tYp_;                                         \
+      (_dSc_)->dpl     = _pVl_;                                         \
+      (_dSc_)->d       = 1;                                             \
+      (_dSc_)->g       = 1;                                             \
+      (_dSc_)->s       = 1;                                             \
+      (_dSc_)->p       = 1;                                             \
+   })
 
 #define tss_dsc(_dSc_,_tSs_)                                            \
    ({                                                                   \
@@ -20,9 +47,10 @@ extern uint32_t __kernel_end__;
       (_dSc_)->p      = 1;                                              \
    })
 
-void userland() {
-   asm volatile ("mov %eax, %cr0");
-}
+#define c0_dsc(_d) gdt_flat_dsc(_d,0,SEG_DESC_CODE_XR)
+#define d0_dsc(_d) gdt_flat_dsc(_d,0,SEG_DESC_DATA_RW)
+#define c3_dsc(_d) gdt_flat_dsc(_d,3,SEG_DESC_CODE_XR)
+#define d3_dsc(_d) gdt_flat_dsc(_d,3,SEG_DESC_DATA_RW)
 
 void print_gdt_content(gdt_reg_t gdtr_ptr) {
     seg_desc_t* gdt_ptr;
@@ -36,6 +64,7 @@ void print_gdt_content(gdt_reg_t gdtr_ptr) {
         } else {
             end = start + (gdt_ptr->limit_2<<16 | gdt_ptr->limit_1);
         }
+        debug("\t\t");
         debug("%d ", i);
         debug("[0x%x ", start);
         debug("- 0x%x] ", end);
@@ -53,150 +82,78 @@ void print_gdt_content(gdt_reg_t gdtr_ptr) {
     }
 }
 
-void initGDT() {
+void test_ring0() {
+    debug("Trying a kernel instruction...\n");
+    asm volatile ("mov %eax, %cr0");
+    debug("We are in ring 0!\n");
+    asm volatile ("leave"); 
+}
 
-    printf("\n");
-    printf("Segmentation \n");
+void go_to_ring3(void* ptr) {
+    debug("Going to userland...\n");
+
+    set_ds(d3_sel);
+    set_es(d3_sel);
+    set_fs(d3_sel);
+    set_gs(d3_sel);
+    TSS.s0.esp = get_ebp();
+    TSS.s0.ss  = d0_sel;
+    tss_dsc(&GDT[ts_idx], (offset_t)&TSS);
+    set_tr(ts_sel);
+
+    debug("Entering now...\n");
+    asm volatile (
+    "push %0    \n" // ss
+    "push %%ebp \n" // esp
+    "pushf      \n" // eflags
+    "push %1    \n" // cs
+    "push %2    \n" // eip
+    "iret"
+    ::
+    "i"(d3_sel),
+    "i"(c3_sel),
+    "r"(ptr)
+    );
+}
+
+void init_gdt() {
+    gdt_reg_t gdtr;
+
+    debug("\n");
+    debug("Segmentation configuration... \n");
     // GDTR and GDT configured by GRUB
-    printf("GDTR and GDT configured by GRUB\n");
+    debug("\tGDTR and GDT configured by GRUB : \n");
     gdt_reg_t gdtr_ptr;
     get_gdtr(gdtr_ptr);
-    debug("GDT addr:  0x%x ", (unsigned int) gdtr_ptr.addr);
-    debug("limit: %d\n", gdtr_ptr.limit);
+    debug("\tGDT addr:  0x%x ", (unsigned int) gdtr_ptr.addr);
+    debug("\tlimit: %d\n", gdtr_ptr.limit);
     print_gdt_content(gdtr_ptr);
-    seg_desc_t *my_gdt = (seg_desc_t*) 0x310000;
 
-    my_gdt[0].raw = 0ULL;
+    //Setting up new GDT
+   GDT[0].raw = 0ULL;
 
-    // Ring 0 RX
-    my_gdt[1].limit_1 = 0xffff;   //:16;     /* bits 00-15 of the segment limit */
-    my_gdt[1].base_1 = 0x0000;    //:16;     /* bits 00-15 of the base address */
-    my_gdt[1].base_2 = 0x00;      //:8;      /* bits 16-23 of the base address */
-    my_gdt[1].type = 11;//Code,RX //:4;      /* segment type */
-    my_gdt[1].s = 1;              //:1;      /* descriptor type */
-    my_gdt[1].dpl = 0; //ring0    //:2;      /* descriptor privilege level */
-    my_gdt[1].p = 1;              //:1;      /* segment present flag */
-    my_gdt[1].limit_2 = 0xf;      //:4;      /* bits 16-19 of the segment limit */
-    my_gdt[1].avl = 1;            //:1;      /* available for fun and profit */
-    my_gdt[1].l = 0; //32bits     //:1;      /* longmode */
-    my_gdt[1].d = 1;              //:1;      /* default length, depend on seg type */
-    my_gdt[1].g = 1;              //:1;      /* granularity */
-    my_gdt[1].base_3 = 0x00;      //:8;      /* bits 24-31 of the base address */
+   c0_dsc( &GDT[c0_idx] );
+   d0_dsc( &GDT[d0_idx] );
+   c3_dsc( &GDT[c3_idx] );
+   d3_dsc( &GDT[d3_idx] );
 
-    // Ring 0 RW
-    my_gdt[2].limit_1 = 0xffff;   //:16;     /* bits 00-15 of the segment limit */
-    my_gdt[2].base_1 = 0x0000;    //:16;     /* bits 00-15 of the base address */
-    my_gdt[2].base_2 = 0x00;      //:8;      /* bits 16-23 of the base address */
-    my_gdt[2].type = 3; //data,RW //:4;      /* segment type */
-    my_gdt[2].s = 1;              //:1;      /* descriptor type */
-    my_gdt[2].dpl = 0; //ring0    //:2;      /* descriptor privilege level */
-    my_gdt[2].p = 1;              //:1;      /* segment present flag */
-    my_gdt[2].limit_2 = 0xf;      //:4;      /* bits 16-19 of the segment limit */
-    my_gdt[2].avl = 1;            //:1;      /* available for fun and profit */
-    my_gdt[2].l = 0; // 32 bits   //:1;      /* longmode */
-    my_gdt[2].d = 1;              //:1;      /* default length, depend on seg type */
-    my_gdt[2].g = 1;              //:1;      /* granularity */
-    my_gdt[2].base_3 = 0x00;      //:8;      /* bits 24-31 of the base address */
+   gdtr.desc  = GDT;
+   gdtr.limit = sizeof(GDT[0])*6 - 1;
+   set_gdtr(gdtr);
 
-    // Ring 3 RX
-    my_gdt[3].limit_1 = 0xffff;   //:16;     /* bits 00-15 of the segment limit */
-    my_gdt[3].base_1 = 0x0000;    //:16;     /* bits 00-15 of the base address */
-    my_gdt[3].base_2 = 0x00;      //:8;      /* bits 16-23 of the base address */
-    my_gdt[3].type = 11;//Code,RX //:4;      /* segment type */
-    my_gdt[3].s = 1;              //:1;      /* descriptor type */
-    my_gdt[3].dpl = 3; //ring0    //:2;      /* descriptor privilege level */
-    my_gdt[3].p = 1;              //:1;      /* segment present flag */
-    my_gdt[3].limit_2 = 0xf;      //:4;      /* bits 16-19 of the segment limit */
-    my_gdt[3].avl = 1;            //:1;      /* available for fun and profit */
-    my_gdt[3].l = 0; //32bits     //:1;      /* longmode */
-    my_gdt[3].d = 1;              //:1;      /* default length, depend on seg type */
-    my_gdt[3].g = 1;              //:1;      /* granularity */
-    my_gdt[3].base_3 = 0x00;      //:8;      /* bits 24-31 of the base address */
+    debug("\tNew GDTR and GDT : \n");
+   debug("\tGDT addr:  0x%x ", (unsigned int) gdtr.addr);
+   debug("\tlimit: %d\n", gdtr.limit);
+   print_gdt_content(gdtr);
 
-    // Ring 3 RW
-    my_gdt[4].limit_1 = 0xffff;   //:16;     /* bits 00-15 of the segment limit */
-    my_gdt[4].base_1 = 0x0000;    //:16;     /* bits 00-15 of the base address */
-    my_gdt[4].base_2 = 0x00;      //:8;      /* bits 16-23 of the base address */
-    my_gdt[4].type = 3; //data,RW //:4;      /* segment type */
-    my_gdt[4].s = 1;              //:1;      /* descriptor type */
-    my_gdt[4].dpl = 3; //ring3    //:2;      /* descriptor privilege level */
-    my_gdt[4].p = 1;              //:1;      /* segment present flag */
-    my_gdt[4].limit_2 = 0xf;      //:4;      /* bits 16-19 of the segment limit */
-    my_gdt[4].avl = 1;            //:1;      /* available for fun and profit */
-    my_gdt[4].l = 0; // 32 bits   //:1;      /* longmode */
-    my_gdt[4].d = 1;              //:1;      /* default length, depend on seg type */
-    my_gdt[4].g = 1;              //:1;      /* granularity */
-    my_gdt[4].base_3 = 0x00;      //:8;      /* bits 24-31 of the base address */
 
-    gdt_reg_t my_gdtr;
-    my_gdtr.addr = (long unsigned int)my_gdt;
-    my_gdtr.limit = sizeof(my_gdt[1])*6;
-    set_gdtr(my_gdtr);
+    debug("\tSetting up segment selectors... ");
+   set_cs(c0_sel);
 
-    debug("\nGDTR and GDT\n");
-    get_gdtr(my_gdtr);
-    debug("GDT addr:  0x%x ", (unsigned int) my_gdtr.addr);
-    debug("limit: %d\n", my_gdtr.limit);
-    print_gdt_content(my_gdtr);
-    debug("\n");
-    // end Q7
-
-    // // Q9
-    // char  src[64];
-    // char *dst = 0;
-    // memset(src, 0xff, 64);
-
-    // my_gdt[3].limit_1 = 0x20;   //:16;     /* bits 00-15 of the segment limit */
-    // my_gdt[3].base_1 = 0x0000;    //:16;     /* bits 00-15 of the base address */
-    // my_gdt[3].base_2 = 0x60;      //:8;      /* bits 16-23 of the base address */
-    // my_gdt[3].type = 3; //data,RW //:4;      /* segment type */
-    // my_gdt[3].s = 1;              //:1;      /* descriptor type */
-    // my_gdt[3].dpl = 0; //ring0    //:2;      /* descriptor privilege level */
-    // my_gdt[3].p = 1;              //:1;      /* segment present flag */
-    // my_gdt[3].limit_2 = 0x0;      //:4;      /* bits 16-19 of the segment limit */
-    // my_gdt[3].avl = 1;            //:1;      /* available for fun and profit */
-    // my_gdt[3].l = 0; // 32 bits   //:1;      /* longmode */
-    // my_gdt[3].d = 1;              //:1;      /* default length, depend on seg type */
-    // my_gdt[3].g = 0;              //:1;      /* granularity */
-    // my_gdt[3].base_3 = 0x00;      //:8;      /* bits 24-31 of the base address */
-    // print_gdt_content(my_gdtr);
-    // // end Q9
-
-    // // Q10
-    // seg_sel_t my_es;
-    // my_es.index = 3;
-    // my_es.ti = 0;
-    // my_es.rpl = 0;
-    // set_es(my_es);
-    // _memcpy8(dst, src, 32);
-    // // end Q10
-
-    // // Q11
-    // // _memcpy8(dst, src, 64);
-    // // end Q11
-
-    // // Q12
-
-    // // end Q12
-
-    // // Q13
-    // // DS/ES/FS/GS
-    // set_ds(gdt_usr_seg_sel(5));
-    // set_es(gdt_usr_seg_sel(5));
-    // set_fs(gdt_usr_seg_sel(5));
-    // set_gs(gdt_usr_seg_sel(5));
-    // // SS
-    // //set_ss(gdt_usr_seg_sel(5)); // plante, #GP
-    // tss_t TSS;
-    // TSS.s0.esp = get_ebp();
-    // TSS.s0.ss  = gdt_krn_seg_sel(2);
-    // tss_dsc(&my_gdt[6], (offset_t)&TSS);
-    // set_tr(gdt_krn_seg_sel(6));
-    // // CS via farjump
-    // // fptr32_t fptr = {.segment = gdt_usr_seg_sel(5), .offset = (uint32_t)userland}; 
-    // // farjump(fptr);  // plante, #GP
-    // // interdit, un moyen de démarrer une tâche ring 3 depuis le ring 0 est 
-    // // de détourner l'usage principal de iret pour profiter du changement 
-    // // de contexte que le CPU sait effectuer à ce moment-là... cf. TP3 pour l'implem.
-    // // end Q13
+   set_ss(d0_sel);
+   set_ds(d0_sel);
+   set_es(d0_sel);
+   set_fs(d0_sel);
+   set_gs(d0_sel);
+   debug(" Success !\n");
 }
