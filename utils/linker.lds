@@ -26,6 +26,9 @@ SECTIONS
    .bss      : { *(.bss COMMON)                  } : phsetup
    /DISCARD/ : { *(.note* .indent .comment)      } : phsetup
 
+   . = 0x900000;
+   .user     : { *(.user)                        } : phsetup
+
    __kernel_end__ = .;
 
 }

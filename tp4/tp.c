@@ -32,12 +32,12 @@ void tp() {
 	}
 	memset((void*)pgd, 0, PAGE_SIZE);
 	pg_set_entry(&pgd[0], PG_KRN|PG_RW, page_nr(ptb));
- 	uint32_t cr0 = get_cr0(); // enable paging
-	set_cr0(cr0|CR0_PG);
+ 	// uint32_t cr0 = get_cr0(); // enable paging
+	// set_cr0(cr0|CR0_PG);
 	//end Q5
 
 	//Q6
-	debug("PTB[1] = %d\n", ptb[1].raw);
+	//debug("PTB[1] = %d\n", ptb[1].raw);
 	// res Q6
 	/* IDT event
 	 . int    #14
@@ -77,9 +77,9 @@ void tp() {
 	}
 	pg_set_entry(&pgd[1], PG_KRN|PG_RW, page_nr(ptb2));
 
-	//uint32_t cr0 = get_cr0(); // enable paging
-	//set_cr0(cr0|CR0_PG);
-	// debug("PTB[1] = %p\n", ptb[1].raw);
+	uint32_t cr0 = get_cr0(); // enable paging
+	set_cr0(cr0|CR0_PG);
+	debug("PTB[1] = %d\n", ptb[1].raw);
 	// end Q6
 
 	// Q7

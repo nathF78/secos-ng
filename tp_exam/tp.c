@@ -7,6 +7,7 @@
 #include <cr.h>
 #include "irq.c"
 #include "segmentation.c"
+#include "paging.c"
 
 extern info_t *info;
 extern uint32_t __kernel_start__;
@@ -32,9 +33,15 @@ char *inttypetochar(int t)
 
 __attribute__((section(".user"))) void user1()
 {
-   debug("user1\n");
+   int i = 0;
    while (1)
-      ;
+   {
+      if (i++ % 10000000 == 0)
+      {
+         printf("userland1 says hello!\n");
+         //asm volatile("mov %eax, %cr0");
+      }
+   }
 }
 
 __attribute__((section(".user"))) void user2()
@@ -42,23 +49,6 @@ __attribute__((section(".user"))) void user2()
    debug("user2\n");
    while (1)
       ;
-}
-
-void userland2()
-{
-   int i = 0;
-   while (1)
-   {
-      if (i++ % 10000000 == 0)
-      {
-         debug("userland2 says hello!\n");
-         asm volatile("mov %eax, %cr0");
-      }
-      else
-      {
-         asm volatile("nop");
-      }
-   }
 }
 
 void tp()
@@ -86,61 +76,37 @@ void tp()
 
    // ********** Gestion des interruptions **********
    init_idt();
-   enable_hardware_interrupts();
+   //enable_hardware_interrupts();
 
    // ********** Pagination **********
-   debug("\nPaging configuration... \n");
-   uint32_t cr3 = get_cr3();
-   debug("\tCurrent CR3 = 0x%x\n", (unsigned int)cr3);
+   init_kernel_pgd();
+   init_kernel_ptb((pte32_t *)0x601000, 0);
+   init_kernel_ptb((pte32_t *)0x602000, 1);
+   init_kernel_ptb((pte32_t *)0x603000, 2);
+   init_kernel_ptb((pte32_t *)0x604000, 3);
 
-   // PGD du noyau
-   debug("\tKernel PGD initialization... ");
-   // Pagination -> Je pense faudrait une fonction pour définir la pagination de chaque tâche puis une fonction qui nous permette de switch -> truc du swtich faudra regarder pour les tables TLB
-   pde32_t *pgd = (pde32_t *)0x600000; // Définition d'une première pgd à voir où on place les suivantes
+   init_user1_pgd();
+   init_user1_ptb((pte32_t *)0x601000, 0);
+   init_user1_ptb((pte32_t *)0x602000, 1);
+   init_user1_ptb((pte32_t *)0x603000, 2);
+   init_user1_ptb((pte32_t *)0x604000, 3);
+   // init_user1_ptb((pte32_t *)0x901000);
+   // init_user1_ptb((pte32_t *)0x902000);
+   // init_user1_ptb((pte32_t *)0x903000);
+   // init_user1_ptb((pte32_t *)0x904000);
+   // init_user1_ptb((pte32_t *)0x905000);
+   // init_user1_ptb((pte32_t *)0x906000);
+   // init_user1_ptb((pte32_t *)0x907000);
+   // init_user1_ptb((pte32_t *)0x908000);
+   // init_user1_ptb((pte32_t *)0x909000);
 
-   // On définit la pgd courante
-   set_cr3((uint32_t)pgd);
-   cr3 = get_cr3();
-   debug(" Success !\n");
-   debug("\t\tNew CR3 = 0x%x\n", (unsigned int)cr3);
 
-   // On définit la ptb associé à la pgd courante
-   debug("\tKernel PTB1 initialization... ");
-   // plus logique à 1000 entrées de 4 octets -> 4Ko ?
-   pte32_t *ptb = (pte32_t *)0x601000; // Définition de la ptb associé -> à voir où on les stockes car si limite 0x400000 ça va être juste
-   for (int i = 0; i < 1024; i++)
-   {                                            // Avec ça on id map tout jusqu'à 0x400000
-      pg_set_entry(&ptb[i], PG_KRN | PG_RW, i); // Ici faut voir les drois qu'on met à chaque tâche et c'est là où ça se complique
-   }
-   memset((void *)pgd, 0, PAGE_SIZE);
-   pg_set_entry(&pgd[0], PG_KRN | PG_RW, page_nr(ptb)); // De même ici faut voir comment on met les droits
-   debug(" Success !\n");
-   // Attention, bien id map tout ce qu'on fait avant la pagination !!
+   enable_paging();
 
-   // On définit la ptb2 associé à la pgd courante //comprend pas trop ce qu'on fait ici ni pourquoi ???
-   debug("\tKernel PTB2 initialization... ");
-   pte32_t *ptb2 = (pte32_t *)0x602000;
-   for (int i = 0; i < 1024; i++)
-   {
-      pg_set_entry(&ptb2[i], PG_KRN | PG_RW, i + 1024);
-   }
-   pg_set_entry(&pgd[1], PG_KRN | PG_RW, page_nr(ptb2));
-   debug(" Success !\n");
+   //user1();
 
-   // activation de la pagination -> fait planter les GP exception -> à voir pourquoi
-   //  debug("\tEnabling paging (set CR0)... ");
-   //  uint32_t cr0 = get_cr0();
-   //  set_cr0(cr0|CR0_PG);
-   //  debug(" Success !\n");
-
-   // debug("PTB[1] = %d\n", ptb[1].raw);
-
-   // enable_GP_intercept();
-
-   // pb passage en mode user -> voir si on peut pas faire un truc du genre
-   // debug("PTB[1] = %d\n", ptb[1].raw);
-
-   go_to_ring3(&test_ring0);
+   go_to_ring3(&user1);
+   //userland2();
 
    int i = 0;
    while (1)
@@ -148,10 +114,6 @@ void tp()
       if (i++ % 10000000 == 0)
       {
          debug("kernel says hello!\n");
-      }
-      else
-      {
-         asm volatile("nop");
       }
    }
 }

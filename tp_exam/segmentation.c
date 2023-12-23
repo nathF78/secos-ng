@@ -1,4 +1,5 @@
 /* GPLv2 (c) Airbus */
+
 #include <debug.h>
 #include <info.h>
 #include <string.h>
@@ -52,6 +53,7 @@ tss_t      TSS;
 #define c3_dsc(_d) gdt_flat_dsc(_d,3,SEG_DESC_CODE_XR)
 #define d3_dsc(_d) gdt_flat_dsc(_d,3,SEG_DESC_DATA_RW)
 
+
 void print_gdt_content(gdt_reg_t gdtr_ptr) {
     seg_desc_t* gdt_ptr;
     gdt_ptr = (seg_desc_t*)(gdtr_ptr.addr);
@@ -101,10 +103,12 @@ void go_to_ring3(void* ptr) {
     tss_dsc(&GDT[ts_idx], (offset_t)&TSS);
     set_tr(ts_sel);
 
+    set_cr3((uint32_t)(pde32_t *)0x700000); // userland1 pgd à changer 
+
     debug("Entering now...\n");
     asm volatile (
     "push %0    \n" // ss
-    "push %%ebp \n" // esp
+    "push %1 \n" // esp
     "pushf      \n" // eflags
     "push %1    \n" // cs
     "push %2    \n" // eip
