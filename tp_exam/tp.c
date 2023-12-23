@@ -32,7 +32,7 @@ char *inttypetochar(int t)
 }
 
 __attribute__((section(".user"))) void user1()
-{
+{  
    int i = 0;
    while (1)
    {
@@ -83,7 +83,7 @@ void tp()
    init_kernel_ptb((pte32_t *)0x601000, 0);
    init_kernel_ptb((pte32_t *)0x602000, 1);
    init_kernel_ptb((pte32_t *)0x603000, 2);
-   init_kernel_ptb((pte32_t *)0x604000, 3);
+   //init_kernel_ptb((pte32_t *)0x604000, 3);
 
    init_user1_pgd();
    init_user1_ptb((pte32_t *)0x601000, 0);
