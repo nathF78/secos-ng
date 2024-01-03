@@ -54,7 +54,7 @@ void init_user1_ptb(pte32_t *addr, int idx)
     pte32_t *ptb = addr;
     for (int i = 0; i < 1024; i++)
     {
-        pg_set_entry(&ptb[i], PG_USR | PG_RW, i);
+        pg_set_entry(&ptb[i], PG_USR | PG_RW, i + idx * 1024);
     }
     pg_set_entry(&pgd_user1[idx], PG_USR | PG_RW, page_nr(ptb));
     debug(" Success !\n");
@@ -66,7 +66,7 @@ void init_kernel_ptb(pte32_t *addr, int idx)
     pte32_t *ptb = addr;
     for (int i = 0; i < 1024; i++)
     {
-        pg_set_entry(&ptb[i], PG_KRN | PG_RW, i);
+        pg_set_entry(&ptb[i], PG_KRN | PG_RW, i + idx * 1024);
     }
     pg_set_entry(&pgd_kernel[idx], PG_KRN | PG_RW, page_nr(ptb));
     debug(" Success !\n");

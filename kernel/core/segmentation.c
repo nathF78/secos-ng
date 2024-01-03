@@ -112,18 +112,21 @@ void go_to_ring3(void* ptr) {
     set_cr3((uint32_t)(pde32_t *)0x700000); // userland1 pgd à changer 
 
     debug("Entering now...\n");
+
+    uint32_t   ustack = 0x900000;
     asm volatile (
-    "push %0    \n" // ss
-    "push %1 \n" // esp
-    "pushf      \n" // eflags
-    "push %1    \n" // cs
-    "push %2    \n" // eip
-    "iret"
-    ::
-    "i"(d3_sel),
-    "i"(c3_sel),
-    "r"(ptr)
-    );
+      "push %0 \n" // ss
+      "push %1 \n" // esp pour du ring 3 !
+      "pushf   \n" // eflags
+      "push %2 \n" // cs
+      "push %3 \n" // eip
+      "iret"
+      ::
+       "i"(d3_sel),
+       "m"(ustack),
+       "i"(c3_sel),
+       "r"(ptr)
+      );
 }
 
 void init_gdt() {

@@ -76,20 +76,20 @@ void tp()
 
    // ********** Gestion des interruptions **********
    init_idt();
-   //enable_hardware_interrupts();
+   enable_hardware_interrupts();
 
    // ********** Pagination **********
    init_kernel_pgd();
    init_kernel_ptb((pte32_t *)0x601000, 0);
    init_kernel_ptb((pte32_t *)0x602000, 1);
-   init_kernel_ptb((pte32_t *)0x603000, 2);
+   //init_kernel_ptb((pte32_t *)0x603000, 2);
    //init_kernel_ptb((pte32_t *)0x604000, 3);
 
    init_user1_pgd();
    init_user1_ptb((pte32_t *)0x601000, 0);
    init_user1_ptb((pte32_t *)0x602000, 1);
    init_user1_ptb((pte32_t *)0x603000, 2);
-   init_user1_ptb((pte32_t *)0x604000, 3);
+   //init_user1_ptb((pte32_t *)0x604000, 3);
    // init_user1_ptb((pte32_t *)0x901000);
    // init_user1_ptb((pte32_t *)0x902000);
    // init_user1_ptb((pte32_t *)0x903000);
