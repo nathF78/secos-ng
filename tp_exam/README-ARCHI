@@ -1,0 +1,6 @@
+Pour ajouter des .c et des .h :
+Mettre les .c dans kernel/core 
+Mettre les .h dans kernel/include 
+Ajouter les .c à compiler dans config.mk dans la variable core_obj avec le même modèle que les précédents 
+Include les .h dans tp.c entre < ... .h> 
+Tester la compilation. 
