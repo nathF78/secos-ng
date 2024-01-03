@@ -5,9 +5,9 @@
 #include <string.h>
 #include <segmem.h>
 #include <cr.h>
-#include "irq.c"
-#include "segmentation.c"
-#include "paging.c"
+#include <segmentation.h>
+#include <paging.h>
+#include <irq.h>
 
 extern info_t *info;
 extern uint32_t __kernel_start__;
