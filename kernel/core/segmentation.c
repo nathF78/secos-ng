@@ -7,25 +7,34 @@
 #include <segmem.h>
 #include <cr.h>
 #include <pagemem.h>
+#include <stack.h>
+#include <gpr.h>
 
 extern info_t   *info;
 extern uint32_t __kernel_start__;
 extern uint32_t __kernel_end__;
+extern uint32_t __user1_start__; 
+extern uint32_t __user2_start__; 
+
 
 #define c0_idx  1
 #define d0_idx  2
 #define c3_idx  3
 #define d3_idx  4
-#define ts_idx  5
+#define ts_idxa 5
+#define ts_idxb 6 
+
 
 #define c0_sel  gdt_krn_seg_sel(c0_idx)
 #define d0_sel  gdt_krn_seg_sel(d0_idx)
 #define c3_sel  gdt_usr_seg_sel(c3_idx)
 #define d3_sel  gdt_usr_seg_sel(d3_idx)
-#define ts_sel  gdt_krn_seg_sel(ts_idx)
+#define ts_sela gdt_krn_seg_sel(ts_idxa)
+#define ts_selb gdt_krn_seg_sel(ts_idxb)
 
 seg_desc_t *GDT = (seg_desc_t*) 0x310000;
-tss_t      TSS;
+tss_t      TSSA;
+tss_t      TSSB; 
 
 #define gdt_flat_dsc(_dSc_,_pVl_,_tYp_)                                 \
    ({                                                                   \
@@ -103,30 +112,65 @@ void go_to_ring3(void* ptr) {
     set_gs(d3_sel);
     //set_cs(c3_sel);
 
-    TSS.s0.esp = get_ebp();
-    TSS.s0.ss  = d0_sel;
+    
+    set_tr(ts_sela);
+    tss_t tr;
+    get_tr(tr); 
+    debug("Esp dans le tr du cpu : %x " ,tr.s0.esp); 
 
-    tss_dsc(&GDT[ts_idx], (offset_t)&TSS);
-    set_tr(ts_sel);
 
     set_cr3((uint32_t)(pde32_t *)0x700000); // userland1 pgd à changer 
 
+    set_esp(TSSA.s0.esp);
+    uint32_t esp = get_esp(); 
+    debug("esp : %x \n", esp);  
+
+    debug("ptr : %x \n", (uint32_t) ptr);
+
     debug("Entering now...\n");
 
-    uint32_t   ustack = 0x900000;
+    // uint32_t   ustack = 0x900000;
+    // asm volatile (
+    //   "push %0 \n" // ss
+    //   "push %1 \n" // esp pour du ring 3 !
+    //   "pushf   \n" // eflags
+    //   "push %2 \n" // cs
+    //   "push %3 \n" // eip
+    //   "iret"
+    //   ::
+    //    "i"(d3_sel),
+    //    "m"(ustack),
+    //    "i"(c3_sel),
+    //    "r"(ptr)
+    //   );
     asm volatile (
-      "push %0 \n" // ss
-      "push %1 \n" // esp pour du ring 3 !
-      "pushf   \n" // eflags
-      "push %2 \n" // cs
-      "push %3 \n" // eip
-      "iret"
-      ::
-       "i"(d3_sel),
-       "m"(ustack),
-       "i"(c3_sel),
-       "r"(ptr)
-      );
+        "iret"
+    ); 
+}
+
+void init_stack(){
+    uint32_t *stack1 = (uint32_t *) stack_nu1;
+    uint32_t *stack2 = (uint32_t *) stack_nu2;
+
+    //Initialisation du contexte de la tâche 1 pour le premier lancement 
+    stack1[0] = d3_sel;                         //ss3
+    stack1[-1] = stack_u1;                      //esp3
+    stack1[-2] = 0;                             //FLAGS
+    stack1[-3] = c3_sel;                        //cs 
+    stack1[-4] = (uint32_t) &__user1_start__;   //eip
+
+    //Initialisation du contexte de la tâche 1 pour le premier lancement 
+    stack2[0] = d3_sel;                         //ss3
+    stack2[-1] = stack_u2;                      //esp3
+    stack2[-2] = 0;                             //FLAGS
+    stack2[-3] = c3_sel;                        //cs 
+    stack2[-4] = (uint32_t) &__user2_start__;   //eip
+
+    //Initialisation des TSS correspondantes 
+    TSSA.s0.esp = (uint32_t) &stack1[-4]; 
+    TSSA.s0.ss = d0_sel; 
+    TSSB.s0.esp = (uint32_t) &stack2[-4]; 
+    TSSB.s0.ss = d0_sel; 
 }
 
 void init_gdt() {
@@ -143,30 +187,35 @@ void init_gdt() {
     print_gdt_content(gdtr_ptr);
 
     //Setting up new GDT
-   GDT[0].raw = 0ULL;
+    GDT[0].raw = 0ULL;
 
-   c0_dsc( &GDT[c0_idx] );
-   d0_dsc( &GDT[d0_idx] );
-   c3_dsc( &GDT[c3_idx] );
-   d3_dsc( &GDT[d3_idx] );
+    c0_dsc( &GDT[c0_idx] );
+    d0_dsc( &GDT[d0_idx] );
+    c3_dsc( &GDT[c3_idx] );
+    d3_dsc( &GDT[d3_idx] );
 
-   gdtr.desc  = GDT;
-   gdtr.limit = sizeof(GDT[0])*6 - 1;
-   set_gdtr(gdtr);
+    init_stack(); 
+
+    tss_dsc(&GDT[ts_idxa], (offset_t)&TSSA); 
+    tss_dsc(&GDT[ts_idxb], (offset_t)&TSSB);
+
+    gdtr.desc  = GDT;
+    gdtr.limit = sizeof(GDT[0])*7 - 1;
+    set_gdtr(gdtr);
 
     debug("\tNew GDTR and GDT : \n");
-   debug("\tGDT addr:  0x%x ", (unsigned int) gdtr.addr);
-   debug("\tlimit: %d\n", gdtr.limit);
-   print_gdt_content(gdtr);
+    debug("\tGDT addr:  0x%x ", (unsigned int) gdtr.addr);
+    debug("\tlimit: %d\n", gdtr.limit);
+    print_gdt_content(gdtr);
 
 
     debug("\tSetting up segment selectors... ");
-   set_cs(c0_sel);
+    set_cs(c0_sel);
 
-   set_ss(d0_sel);
-   set_ds(d0_sel);
-   set_es(d0_sel);
-   set_fs(d0_sel);
-   set_gs(d0_sel);
-   debug(" Success !\n");
+    set_ss(d0_sel);
+    set_ds(d0_sel);
+    set_es(d0_sel);
+    set_fs(d0_sel);
+    set_gs(d0_sel);
+    debug(" Success !\n");
 }

@@ -10,7 +10,10 @@
 
 void init_kernel_pgd(); 
 void init_user1_pgd(); 
-void init_user1_ptb(pte32_t *addr, int idx); 
+void init_user2_pgd(); 
+// void init_user1_ptb(pte32_t *addr, int idx); 
+void init_user1_ptb(); 
+void init_user2_ptb(); 
 void init_kernel_ptb(pte32_t *addr, int idx); 
 void enable_paging(); 
 
