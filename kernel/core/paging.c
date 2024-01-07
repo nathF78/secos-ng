@@ -10,8 +10,6 @@ extern info_t *info;
 extern uint32_t __kernel_start__;
 extern uint32_t __kernel_end__;
 
-/* kernel is at 0x30000000 and user at 0x90000000 -> plus d'actualité */
-
 pde32_t *pgd_kernel = (pde32_t *)0x400000;
 
 pde32_t *pgd_user1 = (pde32_t *)0x700000;

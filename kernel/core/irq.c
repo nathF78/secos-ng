@@ -18,17 +18,17 @@ uint64_t old_GP_handler;
 void interrupt_clock_handler(){
     asm volatile ("pusha"); 
     debug("Clock interrupt : %d \n", clock); 
-    clock++;
+    //clock++;
 
     //Scheduler 
-    tss_t tr;
-    get_tr(tr);
-    tr.s0.esp = get_esp(); 
-    user++; user = user % 2; 
-    debug("User : %d", user); 
+    // tss_t tr;
+    // get_tr(tr);
+    // tr.s0.esp = get_esp(); 
+    //
+    user ++;
     change_context(user); 
-    get_tr(tr); 
-    set_esp(tr.s0.esp);
+    //get_tr(tr); 
+    //set_esp(tr.s0.esp);
 
     //tell the hardware that we have handled the interrupt
     outb(0x20,0x20);
