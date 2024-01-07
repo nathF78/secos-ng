@@ -6,7 +6,8 @@
 #include <string.h>
 #include <segmem.h>
 #include <io.h>
-
+#include <gpr.h>
+#include <segmentation.h>
 
 void interrupt_clock_handler();
 void interrupt_test_GP_handler(); 

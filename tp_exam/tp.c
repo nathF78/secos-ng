@@ -88,6 +88,7 @@ void tp()
    // ********** Gestion des interruptions **********
    init_idt();
    enable_hardware_interrupts();
+   init_stack(); 
 
    // ********** Pagination **********
    init_kernel_pgd();

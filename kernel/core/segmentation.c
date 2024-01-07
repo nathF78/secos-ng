@@ -148,28 +148,48 @@ void go_to_ring3(void* ptr) {
     ); 
 }
 
+void change_context(int user){
+    if (user == 0) {
+        set_cr3((uint32_t)(pde32_t *)0x700000);
+        set_tr(ts_sela);
+    }
+    else if (user == 1){
+        set_cr3((uint32_t)(pde32_t *)0xa00000);
+        set_tr(ts_selb);
+    }
+}
+
 void init_stack(){
     uint32_t *stack1 = (uint32_t *) stack_nu1;
     uint32_t *stack2 = (uint32_t *) stack_nu2;
+    uint32_t stacku1 = stack_u1;
+    uint32_t stacku2 = stack_u2;
+    uint32_t flags = get_flags();
 
     //Initialisation du contexte de la tâche 1 pour le premier lancement 
     stack1[0] = d3_sel;                         //ss3
-    stack1[-1] = stack_u1;                      //esp3
-    stack1[-2] = 0;                             //FLAGS
+    stack1[-1] = stacku1;                       //esp3
+    stack1[-2] = flags;                         //FLAGS
     stack1[-3] = c3_sel;                        //cs 
     stack1[-4] = (uint32_t) &__user1_start__;   //eip
 
     //Initialisation du contexte de la tâche 1 pour le premier lancement 
     stack2[0] = d3_sel;                         //ss3
-    stack2[-1] = stack_u2;                      //esp3
-    stack2[-2] = 0;                             //FLAGS
+    stack2[-1] = stacku2;                       //esp3
+    stack2[-2] = flags;                         //FLAGS
     stack2[-3] = c3_sel;                        //cs 
     stack2[-4] = (uint32_t) &__user2_start__;   //eip
+    stack2[-5] = (uint32_t) 0;                  //ebx
+    stack2[-6] = (uint32_t) 0;                  //eax
+    stack2[-7] = (uint32_t) 0;                  //ecx
+    stack2[-8] = (uint32_t) 0;                  //edx
+    stack2[-9] = (uint32_t) 0;                  //esi
+    stack2[-10] = (uint32_t) 0;                 //edi
 
     //Initialisation des TSS correspondantes 
     TSSA.s0.esp = (uint32_t) &stack1[-4]; 
     TSSA.s0.ss = d0_sel; 
-    TSSB.s0.esp = (uint32_t) &stack2[-4]; 
+    TSSB.s0.esp = (uint32_t) &stack2[-10]; 
     TSSB.s0.ss = d0_sel; 
 }
 
@@ -193,8 +213,6 @@ void init_gdt() {
     d0_dsc( &GDT[d0_idx] );
     c3_dsc( &GDT[c3_idx] );
     d3_dsc( &GDT[d3_idx] );
-
-    init_stack(); 
 
     tss_dsc(&GDT[ts_idxa], (offset_t)&TSSA); 
     tss_dsc(&GDT[ts_idxb], (offset_t)&TSSB);
