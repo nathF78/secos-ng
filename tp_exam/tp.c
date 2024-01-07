@@ -43,7 +43,6 @@ __attribute__((section(".user1"))) void user1()
       if (i++ % 10000000 == 0)
       {
          printf("userland1 says hello!\n");
-         //asm volatile("mov %eax, %cr0");
       }
    }
 }
@@ -57,7 +56,6 @@ __attribute__((section(".user2"))) void user2()
       if (i++ % 10000000 == 0)
       {
          printf("\t\t\tuserland2 says hello!\n");
-         //asm volatile("mov %eax, %cr0");
       }
    }
 }
@@ -95,42 +93,18 @@ void tp()
    init_kernel_ptb((pte32_t *)0x401000, 0);
    init_kernel_ptb((pte32_t *)0x402000, 1);
    init_kernel_ptb((pte32_t *)0x403000, 2);
-   //init_kernel_ptb((pte32_t *)0x603000, 2);
-   //init_kernel_ptb((pte32_t *)0x604000, 3);
 
    init_user1_pgd();
    init_user1_ptb(); 
 
    init_user2_pgd(); 
    init_user2_ptb(); 
-   // init_user1_ptb((pte32_t *)0x701000, 0);
-   // init_user1_ptb((pte32_t *)0x702000, 1);
-   // init_user1_ptb((pte32_t *)0x703000, 2);
-   //init_user1_ptb((pte32_t *)0x604000, 3);
-   // init_user1_ptb((pte32_t *)0x901000);
-   // init_user1_ptb((pte32_t *)0x902000);
-   // init_user1_ptb((pte32_t *)0x903000);
-   // init_user1_ptb((pte32_t *)0x904000);
-   // init_user1_ptb((pte32_t *)0x905000);
-   // init_user1_ptb((pte32_t *)0x906000);
-   // init_user1_ptb((pte32_t *)0x907000);
-   // init_user1_ptb((pte32_t *)0x908000);
-   // init_user1_ptb((pte32_t *)0x909000);
-
 
    enable_paging();
 
-   //user1();
 
+   // ********** Premier changement de contexte **********
+   enable_hardware_interrupts();
+   init_stack(); 
    go_to_ring3(&user1);
-   //userland2();
-
-   int i = 0;
-   while (1)
-   {
-      if (i++ % 10000000 == 0)
-      {
-         debug("kernel says hello!\n");
-      }
-   }
 }

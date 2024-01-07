@@ -110,8 +110,6 @@ void go_to_ring3(void* ptr) {
     set_es(d3_sel);
     set_fs(d3_sel);
     set_gs(d3_sel);
-    //set_cs(c3_sel);
-
     
     set_tr(ts_sela);
     tss_t tr;
@@ -119,7 +117,7 @@ void go_to_ring3(void* ptr) {
     debug("Esp dans le tr du cpu : %x " ,tr.s0.esp); 
 
 
-    set_cr3((uint32_t)(pde32_t *)0x700000); // userland1 pgd à changer 
+    set_cr3((uint32_t)(pde32_t *)0x700000);  
 
     set_esp(TSSA.s0.esp);
     uint32_t esp = get_esp(); 
@@ -129,20 +127,6 @@ void go_to_ring3(void* ptr) {
 
     debug("Entering now...\n");
 
-    // uint32_t   ustack = 0x900000;
-    // asm volatile (
-    //   "push %0 \n" // ss
-    //   "push %1 \n" // esp pour du ring 3 !
-    //   "pushf   \n" // eflags
-    //   "push %2 \n" // cs
-    //   "push %3 \n" // eip
-    //   "iret"
-    //   ::
-    //    "i"(d3_sel),
-    //    "m"(ustack),
-    //    "i"(c3_sel),
-    //    "r"(ptr)
-    //   );
     asm volatile (
         "iret"
     ); 
@@ -198,6 +182,7 @@ void init_gdt() {
 
     debug("\n");
     debug("Segmentation configuration... \n");
+
     // GDTR and GDT configured by GRUB
     debug("\tGDTR and GDT configured by GRUB : \n");
     gdt_reg_t gdtr_ptr;

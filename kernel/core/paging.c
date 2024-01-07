@@ -10,8 +10,6 @@ extern info_t *info;
 extern uint32_t __kernel_start__;
 extern uint32_t __kernel_end__;
 
-/* kernel is at 0x30000000 and user at 0x90000000 -> plus d'actualité */
-
 pde32_t *pgd_kernel = (pde32_t *)0x400000;
 
 pde32_t *pgd_user1 = (pde32_t *)0x700000;
@@ -29,9 +27,7 @@ void init_kernel_pgd()
     uint32_t cr3 = get_cr3();
     debug("\tCurrent CR3 = 0x%x\n", (unsigned int)cr3);
 
-    // PGD du noyau
     debug("\tKernel PGD initialization at physical addr : %p... ", pgd_kernel);
-    // On définit la pgd courante
     set_cr3((uint32_t)pgd_kernel);
     cr3 = get_cr3();
     memset((void *)pgd_kernel, 0, PAGE_SIZE);
@@ -42,7 +38,6 @@ void init_kernel_pgd()
 void init_user1_pgd()
 {
     debug("\tUser1 PGD initialization at physical addr : %p... ", pgd_user1);
-    // On définit la pgd courante
     set_cr3((uint32_t)pgd_user1);
     uint32_t cr3 = get_cr3();
     memset((void *)pgd_user1, 0, PAGE_SIZE);
@@ -56,7 +51,6 @@ void init_user1_pgd()
 void init_user2_pgd()
 {
     debug("\tUser2 PGD initialization at physical addr : %p... ", pgd_user2);
-    // On définit la pgd courante
     set_cr3((uint32_t)pgd_user2);
     uint32_t cr3 = get_cr3();
     memset((void *)pgd_user2, 0, PAGE_SIZE);
@@ -67,21 +61,8 @@ void init_user2_pgd()
     debug(" Success !\n");
 }
 
-// void init_user1_ptb(pte32_t *addr, int idx)
-// {
-//     debug("\tUser1 PTB initialization at physical addr : %p... ", addr);
-//     pte32_t *ptb = addr;
-//     for (int i = 0; i < 1024; i++)
-//     {
-//         pg_set_entry(&ptb[i], PG_USR | PG_RW, i + idx * 1024);
-//     }
-//     pg_set_entry(&pgd_user1[idx], PG_USR | PG_RW, page_nr(ptb));
-//     debug(" Success !\n");
-// }
-
 void init_user1_ptb()
 {
-    // debug("\tUser1 PTB initialization at physical addr : %p... ", );
     pte32_t *ptb = ptb1_user1;
     debug("\tUser1 PTB initialization at physical addr : %p... ", ptb);
 
@@ -115,7 +96,6 @@ void init_user1_ptb()
 
 void init_user2_ptb()
 {
-    // debug("\tUser1 PTB initialization at physical addr : %p... ", );
     pte32_t *ptb = ptb1_user2;
     debug("\tUser2 PTB initialization at physical addr : %p... ", ptb);
 

@@ -21,14 +21,14 @@ void interrupt_clock_handler(){
     clock++;
 
     //Scheduler 
-    tss_t tr;
-    get_tr(tr);
-    tr.s0.esp = get_esp(); 
-    user++; user = user % 2; 
-    debug("User : %d", user); 
-    change_context(user); 
-    get_tr(tr); 
-    set_esp(tr.s0.esp);
+    // tss_t tr;
+    // get_tr(tr);
+    // tr.s0.esp = get_esp(); 
+    // user++; user = user % 2; 
+    // debug("User : %d", user); 
+    // change_context(user); 
+    // get_tr(tr); 
+    // set_esp(tr.s0.esp);
 
     //tell the hardware that we have handled the interrupt
     outb(0x20,0x20);
@@ -50,7 +50,6 @@ void interrupt_test_handler(){
 	printf("BP interruption ! \n");
 	uint32_t val;
    	asm volatile ("mov 4(%%ebp), %0":"=r"(val)); 
-	//printf("val  blabla : %x \n", val);
 	asm volatile ("popa"); 
 	asm volatile ("leave; iret"); 
 }
